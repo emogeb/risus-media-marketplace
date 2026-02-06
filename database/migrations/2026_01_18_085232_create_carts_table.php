@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('carts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // Nullable for guest carts
+            $table->string('cart_token')->nullable()->unique(); // UUID for guest/session-based carts
+            $table->string('status')->default('active'); // active, abandoned, completed, expired
+            $table->string('currency', 3)->default('USD');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamps();
+            $table->softDeletes(); // Soft delete for marketplace safety
+
+            // Index for active carts by user
+            $table->index(['user_id', 'status']);
+            $table->index('cart_token'); // For guest cart lookup
+            $table->index('expires_at');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('carts');
+    }
+};

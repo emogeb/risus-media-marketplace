@@ -1,0 +1,307 @@
+DATABASE RELATIONSHIPS
+======================
+
+This document contains all database relationships extracted from the models.
+
+===========================================
+USER MODEL RELATIONSHIPS
+===========================================
+
+User -> Store (hasMany)
+  - stores() -> hasMany(Store::class, 'owner_user_id')
+
+User -> Order (hasMany)
+  - orders() -> hasMany(Order::class)
+
+User -> SellerProfile (hasOne)
+  - sellerProfile() -> hasOne(SellerProfile::class)
+
+User -> CustomerProfile (hasOne)
+  - customerProfile() -> hasOne(CustomerProfile::class)
+
+User -> Cart (hasMany)
+  - carts() -> hasMany(Cart::class)
+
+===========================================
+STORE MODEL RELATIONSHIPS
+===========================================
+
+Store -> User (belongsTo)
+  - owner() -> belongsTo(User::class, 'owner_user_id')
+
+Store -> Product (hasMany)
+  - products() -> hasMany(Product::class)
+
+Store -> OrderStore (hasMany)
+  - orderStores() -> hasMany(OrderStore::class)
+
+Store -> OrderItem (hasMany)
+  - orderItems() -> hasMany(OrderItem::class)
+
+===========================================
+CATEGORY MODEL RELATIONSHIPS
+===========================================
+
+Category -> Category (belongsTo - self-referential)
+  - parent() -> belongsTo(Category::class, 'parent_id')
+
+Category -> Category (hasMany - self-referential)
+  - children() -> hasMany(Category::class, 'parent_id')
+
+Category -> Product (hasMany)
+  - products() -> hasMany(Product::class)
+
+Category -> Attribute (belongsToMany)
+  - attributes() -> belongsToMany(Attribute::class, 'category_attributes')
+    ->withPivot('is_required', 'sort_order')
+    ->withTimestamps()
+
+Category -> CategoryAttribute (hasMany)
+  - categoryAttributes() -> hasMany(CategoryAttribute::class)
+
+===========================================
+PRODUCT MODEL RELATIONSHIPS
+===========================================
+
+Product -> Store (belongsTo)
+  - store() -> belongsTo(Store::class)
+
+Product -> Category (belongsTo)
+  - category() -> belongsTo(Category::class)
+
+Product -> ProductDescription (hasOne)
+  - description() -> hasOne(ProductDescription::class)
+
+Product -> ProductMedia (hasMany)
+  - media() -> hasMany(ProductMedia::class)
+
+Product -> ProductVariant (hasMany)
+  - variants() -> hasMany(ProductVariant::class)
+
+Product -> ProductAttributeValue (hasMany)
+  - attributeValues() -> hasMany(ProductAttributeValue::class)
+  - productAttributeValues() -> hasMany(ProductAttributeValue::class)
+
+Product -> OrderItem (hasMany)
+  - orderItems() -> hasMany(OrderItem::class)
+
+===========================================
+PRODUCT_VARIANT MODEL RELATIONSHIPS
+===========================================
+
+ProductVariant -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+ProductVariant -> ProductMedia (hasMany)
+  - media() -> hasMany(ProductMedia::class)
+
+ProductVariant -> Attribute (belongsToMany)
+  - options() -> belongsToMany(Attribute::class, 'variant_options')
+    ->using(VariantOption::class)
+    ->withPivot('attribute_value_id')
+    ->withTimestamps()
+
+ProductVariant -> OrderItem (hasMany)
+  - orderItems() -> hasMany(OrderItem::class)
+
+===========================================
+CART MODEL RELATIONSHIPS
+===========================================
+
+Cart -> User (belongsTo)
+  - user() -> belongsTo(User::class)
+
+Cart -> CartItem (hasMany)
+  - items() -> hasMany(CartItem::class)
+
+===========================================
+CART_ITEM MODEL RELATIONSHIPS
+===========================================
+
+CartItem -> Cart (belongsTo)
+  - cart() -> belongsTo(Cart::class)
+
+CartItem -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+CartItem -> ProductVariant (belongsTo)
+  - variant() -> belongsTo(ProductVariant::class)
+
+CartItem -> Store (belongsTo)
+  - store() -> belongsTo(Store::class)
+
+===========================================
+ORDER MODEL RELATIONSHIPS
+===========================================
+
+Order -> User (belongsTo)
+  - user() -> belongsTo(User::class)
+
+Order -> OrderStore (hasMany)
+  - orderStores() -> hasMany(OrderStore::class)
+
+Order -> OrderPayment (hasMany)
+  - payments() -> hasMany(OrderPayment::class)
+
+===========================================
+ORDER_ITEM MODEL RELATIONSHIPS
+===========================================
+
+OrderItem -> Order (belongsTo)
+  - order() -> belongsTo(Order::class)
+
+OrderItem -> OrderStore (belongsTo)
+  - orderStore() -> belongsTo(OrderStore::class)
+
+OrderItem -> Store (belongsTo)
+  - store() -> belongsTo(Store::class)
+
+OrderItem -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+OrderItem -> ProductVariant (belongsTo)
+  - variant() -> belongsTo(ProductVariant::class, 'variant_id')
+
+OrderItem -> OrderItemMeasurement (hasOne)
+  - measurement() -> hasOne(OrderItemMeasurement::class)
+
+===========================================
+ORDER_STORE MODEL RELATIONSHIPS
+===========================================
+
+OrderStore -> Order (belongsTo)
+  - order() -> belongsTo(Order::class)
+
+OrderStore -> Store (belongsTo)
+  - store() -> belongsTo(Store::class)
+
+OrderStore -> OrderItem (hasMany)
+  - orderItems() -> hasMany(OrderItem::class)
+
+===========================================
+ORDER_PAYMENT MODEL RELATIONSHIPS
+===========================================
+
+OrderPayment -> Order (belongsTo)
+  - order() -> belongsTo(Order::class)
+
+===========================================
+ORDER_ITEM_MEASUREMENT MODEL RELATIONSHIPS
+===========================================
+
+OrderItemMeasurement -> OrderItem (belongsTo)
+  - orderItem() -> belongsTo(OrderItem::class)
+
+===========================================
+ATTRIBUTE MODEL RELATIONSHIPS
+===========================================
+
+Attribute -> AttributeValue (hasMany)
+  - values() -> hasMany(AttributeValue::class)
+
+Attribute -> Category (belongsToMany)
+  - categories() -> belongsToMany(Category::class, 'category_attributes')
+    ->withPivot('is_required', 'sort_order')
+    ->withTimestamps()
+
+Attribute -> CategoryAttribute (hasMany)
+  - categoryAttributes() -> hasMany(CategoryAttribute::class)
+
+Attribute -> ProductAttributeValue (hasMany)
+  - productAttributeValues() -> hasMany(ProductAttributeValue::class)
+
+Attribute -> VariantOption (hasMany)
+  - variantOptions() -> hasMany(VariantOption::class)
+
+===========================================
+ATTRIBUTE_VALUE MODEL RELATIONSHIPS
+===========================================
+
+AttributeValue -> Attribute (belongsTo)
+  - attribute() -> belongsTo(Attribute::class)
+
+AttributeValue -> ProductAttributeValue (hasMany)
+  - productAttributeValues() -> hasMany(ProductAttributeValue::class)
+
+AttributeValue -> VariantOption (hasMany)
+  - variantOptions() -> hasMany(VariantOption::class, 'attribute_value_id')
+
+===========================================
+CATEGORY_ATTRIBUTE MODEL RELATIONSHIPS
+===========================================
+
+CategoryAttribute -> Category (belongsTo)
+  - category() -> belongsTo(Category::class)
+
+CategoryAttribute -> Attribute (belongsTo)
+  - attribute() -> belongsTo(Attribute::class)
+
+===========================================
+PRODUCT_ATTRIBUTE_VALUE MODEL RELATIONSHIPS
+===========================================
+
+ProductAttributeValue -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+ProductAttributeValue -> Attribute (belongsTo)
+  - attribute() -> belongsTo(Attribute::class)
+
+ProductAttributeValue -> AttributeValue (belongsTo)
+  - value() -> belongsTo(AttributeValue::class, 'attribute_value_id')
+
+===========================================
+PRODUCT_DESCRIPTION MODEL RELATIONSHIPS
+===========================================
+
+ProductDescription -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+===========================================
+PRODUCT_MEDIA MODEL RELATIONSHIPS
+===========================================
+
+ProductMedia -> Product (belongsTo)
+  - product() -> belongsTo(Product::class)
+
+ProductMedia -> ProductVariant (belongsTo)
+  - variant() -> belongsTo(ProductVariant::class, 'variant_id')
+
+===========================================
+VARIANT_OPTION MODEL RELATIONSHIPS
+===========================================
+
+VariantOption -> ProductVariant (belongsTo)
+  - variant() -> belongsTo(ProductVariant::class)
+
+VariantOption -> Attribute (belongsTo)
+  - attribute() -> belongsTo(Attribute::class)
+
+VariantOption -> AttributeValue (belongsTo)
+  - value() -> belongsTo(AttributeValue::class, 'attribute_value_id')
+
+===========================================
+SELLER_PROFILE MODEL RELATIONSHIPS
+===========================================
+
+SellerProfile -> User (belongsTo)
+  - user() -> belongsTo(User::class)
+
+===========================================
+CUSTOMER_PROFILE MODEL RELATIONSHIPS
+===========================================
+
+CustomerProfile -> User (belongsTo)
+  - user() -> belongsTo(User::class)
+
+===========================================
+SUMMARY OF RELATIONSHIP TYPES
+===========================================
+
+hasMany: One-to-Many relationships
+belongsTo: Many-to-One relationships
+hasOne: One-to-One relationships
+belongsToMany: Many-to-Many relationships (with pivot tables)
+
+PIVOT TABLES:
+- category_attributes (Category <-> Attribute)
+- variant_options (ProductVariant <-> Attribute)

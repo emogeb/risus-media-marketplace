@@ -109,9 +109,17 @@
         "skipLibCheck": true /* Skip type checking all .d.ts files. */,
         "baseUrl": ".",
         "paths": {
-            "@/*": ["./resources/js/*"]
+            "@/*": ["./resources/js/*"],
+            "@admin/*": ["./resources/admin/*"]
         },
-        "jsx": "react-jsx"
+        "jsx": "preserve"
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.tsx"]
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.d.ts",
+        "resources/js/**/*.vue",
+        "resources/admin/**/*.ts",
+        "resources/admin/**/*.vue"
+    ],
+    "exclude": ["node_modules"]
 }

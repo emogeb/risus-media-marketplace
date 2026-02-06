@@ -17,6 +17,9 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        return array_merge($this->profileRules($this->user()->id), [
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'tax_number' => ['nullable', 'string', 'max:50'],
+        ]);
     }
 }

@@ -1,0 +1,1539 @@
+
+===========================================
+FILE: Attribute.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Attribute extends Model
+{
+    /** @use HasFactory<\Database\Factories\AttributeFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'code',
+        'name',
+        'data_type',
+        'is_filterable',
+        'is_variant',
+        'sort_order',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_filterable' => 'boolean',
+            'is_variant' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the attribute values for the attribute.
+     */
+    public function values(): HasMany
+    {
+        return $this->hasMany(AttributeValue::class);
+    }
+
+    /**
+     * Get the categories that use this attribute.
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'category_attributes')
+            ->withPivot('is_required', 'sort_order')
+            ->withTimestamps();
+    }
+
+        public function categoryAttributes()
+    {
+        return $this->hasMany(CategoryAttribute::class);
+    }
+    /**
+     * Get the product attribute values.
+     */
+    public function productAttributeValues(): HasMany
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
+
+    /**
+     * Get the variant options.
+     */
+    public function variantOptions(): HasMany
+    {
+        return $this->hasMany(VariantOption::class);
+    }
+}
+
+
+
+===========================================
+FILE: AttributeValue.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class AttributeValue extends Model
+{
+    /** @use HasFactory<\Database\Factories\AttributeValueFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'attribute_id',
+        'value',
+        'slug',
+        'sort_order',
+    ];
+
+    /**
+     * Get the attribute that owns the value.
+     */
+    public function attribute(): BelongsTo
+    {
+        return $this->belongsTo(Attribute::class);
+    }
+
+    /**
+     * Get the product attribute values.
+     */
+    public function productAttributeValues(): HasMany
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
+
+    /**
+     * Get the variant options.
+     */
+    public function variantOptions(): HasMany
+    {
+        return $this->hasMany(VariantOption::class, 'attribute_value_id');
+    }
+}
+
+
+
+===========================================
+FILE: Cart.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+
+class Cart extends Model
+{
+    /** @use HasFactory<\Database\Factories\CartFactory> */
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'user_id',
+        'cart_token',
+        'status',
+        'currency',
+        'expires_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Get the user that owns the cart.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the cart items for the cart.
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    /**
+     * Add or update item in cart (merge behavior).
+     * If same product + variant exists, increments qty; otherwise creates new item.
+     *
+     * @param int $productId
+     * @param int|null $variantId
+     * @param int $qty
+     * @param int $storeId
+     * @return CartItem
+     */
+    public function addOrUpdateItem(int $productId, ?int $variantId, int $qty, int $storeId): CartItem
+    {
+        $product = Product::findOrFail($productId);
+        
+        // Validate variant requirement
+        CartItem::validateVariantRequirement($product, $variantId);
+
+        // Find existing item with same product + variant in this cart
+        $existingItem = $this->items()
+            ->where('product_id', $productId)
+            ->where('variant_id', $variantId)
+            ->first();
+
+        if ($existingItem) {
+            // Update existing item: increment qty and recalculate totals
+            $existingItem->qty += $qty;
+            $existingItem->line_total = $existingItem->qty * $existingItem->unit_price;
+            $existingItem->save();
+            
+            return $existingItem;
+        }
+
+        // Create new item
+        $variant = $variantId ? ProductVariant::findOrFail($variantId) : null;
+        $unitPrice = $variant?->price ?? $product->base_price;
+        $lineTotal = $qty * $unitPrice;
+
+        return $this->items()->create([
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'store_id' => $storeId,
+            'qty' => $qty,
+            'unit_price' => $unitPrice,
+            'currency' => $product->currency ?? 'USD',
+            'title_snapshot' => $product->name,
+            'variant_snapshot' => $variant ? [
+                'sku' => $variant->sku,
+                'price' => $variant->price,
+            ] : null,
+            'line_total' => $lineTotal,
+        ]);
+    }
+
+    /**
+     * Create or find guest cart by cart token.
+     *
+     * @param string|null $cartToken
+     * @return Cart
+     */
+    public static function findOrCreateGuestCart(?string $cartToken = null): Cart
+    {
+        if ($cartToken) {
+            $cart = static::where('cart_token', $cartToken)
+                ->whereNull('user_id')
+                ->where('status', 'active')
+                ->first();
+            
+            if ($cart) {
+                return $cart;
+            }
+        }
+
+        // Create new guest cart
+        return static::create([
+            'user_id' => null,
+            'cart_token' => Str::uuid()->toString(),
+            'status' => 'active',
+            'currency' => 'USD',
+        ]);
+    }
+
+    /**
+     * Merge guest cart into user cart (on login).
+     * Transfers all items from guest cart to user cart.
+     *
+     * @param Cart $guestCart
+     * @param int $userId
+     * @return Cart
+     */
+    public static function mergeGuestCartIntoUserCart(Cart $guestCart, int $userId): Cart
+    {
+        // Get or create user's active cart
+        $userCart = static::where('user_id', $userId)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$userCart) {
+            $userCart = static::create([
+                'user_id' => $userId,
+                'cart_token' => null,
+                'status' => 'active',
+                'currency' => $guestCart->currency ?? 'USD',
+            ]);
+        }
+
+        // Transfer items from guest cart to user cart
+        foreach ($guestCart->items as $guestItem) {
+            $userCart->addOrUpdateItem(
+                $guestItem->product_id,
+                $guestItem->variant_id,
+                $guestItem->qty,
+                $guestItem->store_id
+            );
+        }
+
+        // Mark guest cart as completed/merged
+        $guestCart->update(['status' => 'completed']);
+
+        return $userCart;
+    }
+
+    /**
+     * Get cart by token (for guest carts).
+     *
+     * @param string $cartToken
+     * @return Cart|null
+     */
+    public static function findByToken(string $cartToken): ?Cart
+    {
+        return static::where('cart_token', $cartToken)
+            ->where('status', 'active')
+            ->first();
+    }
+}
+
+
+
+===========================================
+FILE: CartItem.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
+
+class CartItem extends Model
+{
+    /** @use HasFactory<\Database\Factories/CartItemFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'cart_id',
+        'product_id',
+        'variant_id',
+        'store_id',
+        'qty',
+        'unit_price',
+        'currency',
+        'title_snapshot',
+        'variant_snapshot',
+        'line_total',
+        'discount_total',
+        'tax_total',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'unit_price' => 'decimal:2',
+            'line_total' => 'decimal:2',
+            'discount_total' => 'decimal:2',
+            'tax_total' => 'decimal:2',
+            'variant_snapshot' => 'array',
+        ];
+    }
+
+    /**
+     * Get the cart that owns the cart item.
+     */
+    public function cart(): BelongsTo
+    {
+        return $this->belongsTo(Cart::class);
+    }
+
+    /**
+     * Get the product (read-only reference).
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the variant (read-only reference, nullable).
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    /**
+     * Get the store.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Validate that variant_id is required when product has variants.
+     */
+    public static function validateVariantRequirement(Product $product, ?int $variantId): void
+    {
+        if ($product->has_variants && $variantId === null) {
+            throw ValidationException::withMessages([
+                'variant_id' => 'Variant selection is required for products with variants.',
+            ]);
+        }
+    }
+}
+
+
+
+===========================================
+FILE: Category.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Category extends Model
+{
+    /** @use HasFactory<\Database\Factories\CategoryFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'parent_id',
+        'name',
+        'slug',
+        'sort_order',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the parent category.
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'parent_id');
+    }
+
+    /**
+     * Get the child categories.
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Category::class, 'parent_id');
+    }
+
+    /**
+     * Get the products for the category.
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Get the attributes for the category.
+     */
+    public function attributes(): BelongsToMany
+    {
+        return $this->belongsToMany(Attribute::class, 'category_attributes')
+            ->withPivot('is_required', 'sort_order')
+            ->withTimestamps();
+    }
+                
+        public function categoryAttributes()
+    {
+        return $this->hasMany(CategoryAttribute::class);
+    }
+}
+
+
+
+===========================================
+FILE: CategoryAttribute.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class CategoryAttribute extends Model
+{
+    /** @use HasFactory<\Database\Factories\CategoryAttributeFactory> */
+    use HasFactory;
+
+    public $incrementing = false;
+
+    protected $primaryKey = ['category_id', 'attribute_id'];
+
+    protected $fillable = [
+        'category_id',
+        'attribute_id',
+        'is_required',
+        'sort_order',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_required' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the category.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the attribute.
+     */
+    public function attribute(): BelongsTo
+    {
+        return $this->belongsTo(Attribute::class);
+    }
+}
+
+
+
+===========================================
+FILE: CustomerProfile.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class CustomerProfile extends Model
+{
+    /** @use HasFactory<\Database\Factories\CustomerProfileFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'customer_type',
+        'tax_number',
+        'company_name',
+        'first_name',
+        'last_name',
+        'address',
+        'phone',
+        'email',
+    ];
+
+    /**
+     * Get the user that owns the customer profile.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+
+
+
+===========================================
+FILE: Order.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Order extends Model
+{
+    /** @use HasFactory<\Database\Factories\OrderFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'status',
+        'currency',
+        'subtotal',
+        'shipping_total',
+        'tax_total',
+        'grand_total',
+        'shipping_address_json',
+        'billing_address_json',
+        'payment_status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'subtotal' => 'decimal:2',
+            'shipping_total' => 'decimal:2',
+            'tax_total' => 'decimal:2',
+            'grand_total' => 'decimal:2',
+            'shipping_address_json' => 'array',
+            'billing_address_json' => 'array',
+        ];
+    }
+
+    /**
+     * Get the user that placed the order.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the order stores for the order.
+     */
+    public function orderStores(): HasMany
+    {
+        return $this->hasMany(OrderStore::class);
+    }
+
+    /**
+     * Get the payments for the order.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+}
+
+
+
+===========================================
+FILE: OrderItem.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+class OrderItem extends Model
+{
+    /** @use HasFactory<\Database\Factories\OrderItemFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'order_id',
+        'order_store_id',
+        'store_id',
+        'product_id',
+        'variant_id',
+        'qty',
+        'unit_price',
+        'currency',
+        'title_snapshot',
+        'variant_snapshot',
+        'line_total',
+        'notes',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'unit_price' => 'decimal:2',
+            'line_total' => 'decimal:2',
+            'variant_snapshot' => 'array',
+        ];
+    }
+
+    /**
+     * Get the order.
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Get the order store.
+     */
+    public function orderStore(): BelongsTo
+    {
+        return $this->belongsTo(OrderStore::class);
+    }
+
+    /**
+     * Get the store.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Get the product (read-only reference).
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the variant (read-only reference, nullable).
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+
+    /**
+     * Get the measurement for the order item (optional).
+     */
+    public function measurement(): HasOne
+    {
+        return $this->hasOne(OrderItemMeasurement::class);
+    }
+}
+
+
+
+===========================================
+FILE: OrderItemMeasurement.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class OrderItemMeasurement extends Model
+{
+    /** @use HasFactory<\Database\Factories\OrderItemMeasurementFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'order_item_id',
+        'data',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'data' => 'array',
+        ];
+    }
+
+    /**
+     * Get the order item that owns the measurement.
+     */
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
+}
+
+
+
+===========================================
+FILE: OrderPayment.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class OrderPayment extends Model
+{
+    /** @use HasFactory<\Database\Factories\OrderPaymentFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'order_id',
+        'payment_method',
+        'amount',
+        'currency',
+        'status',
+        'transaction_id',
+        'idempotency_key',
+        'payment_intent_id',
+        'gateway_response',
+        'processed_at',
+        'failure_reason',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+            'gateway_response' => 'array',
+            'processed_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Get the order that owns the payment.
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Create or find payment by idempotency key (prevents duplicate payments).
+     *
+     * @param int $orderId
+     * @param array $attributes
+     * @param string|null $idempotencyKey
+     * @return OrderPayment
+     */
+    public static function createOrFindByIdempotencyKey(int $orderId, array $attributes, ?string $idempotencyKey = null): OrderPayment
+    {
+        // Generate idempotency key if not provided
+        $idempotencyKey = $idempotencyKey ?? Str::uuid()->toString();
+
+        // Check if payment with this idempotency key already exists
+        $existingPayment = static::where('idempotency_key', $idempotencyKey)->first();
+        
+        if ($existingPayment) {
+            return $existingPayment;
+        }
+
+        // Check if order already has a pending payment (prevent multiple pending payments)
+        $hasPendingPayment = static::where('order_id', $orderId)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingPayment) {
+            throw ValidationException::withMessages([
+                'order_id' => 'Order already has a pending payment. Please complete or cancel the existing payment first.',
+            ]);
+        }
+
+        // Create new payment with idempotency key
+        return static::create([
+            ...$attributes,
+            'order_id' => $orderId,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+    }
+
+    /**
+     * Check if order has pending payment.
+     *
+     * @param int $orderId
+     * @return bool
+     */
+    public static function hasPendingPayment(int $orderId): bool
+    {
+        return static::where('order_id', $orderId)
+            ->where('status', 'pending')
+            ->exists();
+    }
+}
+
+
+
+===========================================
+FILE: OrderStore.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class OrderStore extends Model
+{
+    /** @use HasFactory<\Database\Factories\OrderStoreFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'order_id',
+        'store_id',
+        'status',
+        'subtotal',
+        'shipping_total',
+        'tax_total',
+        'grand_total',
+        'tracking_code',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'subtotal' => 'decimal:2',
+            'shipping_total' => 'decimal:2',
+            'tax_total' => 'decimal:2',
+            'grand_total' => 'decimal:2',
+        ];
+    }
+
+    /**
+     * Get the order.
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Get the store.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Get the order items for the order store.
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+}
+
+
+
+===========================================
+FILE: Product.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Product extends Model
+{
+    /** @use HasFactory<\Database\Factories\ProductFactory> */
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'store_id',
+        'category_id',
+        'name',
+        'slug',
+        'status',
+        'base_price',
+        'currency',
+        'made_to_order',
+        'lead_time_days',
+        'has_variants',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'base_price' => 'decimal:2',
+            'made_to_order' => 'boolean',
+            'has_variants' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the store that owns the product.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Get the category that owns the product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the product description.
+     */
+    public function description(): HasOne
+    {
+        return $this->hasOne(ProductDescription::class);
+    }
+
+    /**
+     * Get the product media.
+     */
+    public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class);
+    }
+
+    /**
+     * Get the product variants.
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
+     * Get the product attribute values.
+     */
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
+
+    
+        public function productAttributeValues()
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
+
+
+    /**
+     * Get the order items for the product.
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+}
+
+
+
+===========================================
+FILE: ProductAttributeValue.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductAttributeValue extends Model
+{
+    /** @use HasFactory<\Database\Factories\ProductAttributeValueFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'product_id',
+        'attribute_id',
+        'attribute_value_id',
+        'value_text',
+        'value_number',
+        'value_boolean',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'value_number' => 'decimal:2',
+            'value_boolean' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the product.
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the attribute.
+     */
+    public function attribute(): BelongsTo
+    {
+        return $this->belongsTo(Attribute::class);
+    }
+
+    /**
+     * Get the attribute value (nullable).
+     */
+
+    public function value():belongsTo
+{
+    return $this->belongsTo(AttributeValue::class, 'attribute_value_id');
+}
+}
+
+
+
+===========================================
+FILE: ProductDescription.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductDescription extends Model
+{
+    /** @use HasFactory<\Database\Factories\ProductDescriptionFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'product_id',
+        'short_text',
+        'long_text',
+        'care_text',
+        'meta_title',
+        'meta_description',
+    ];
+
+    /**
+     * Get the product that owns the description.
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+}
+
+
+
+===========================================
+FILE: ProductMedia.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductMedia extends Model
+{
+    /** @use HasFactory<\Database\Factories\ProductMediaFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'product_id',
+        'variant_id',
+        'type',
+        'path',
+        'alt_text',
+        'sort_order',
+    ];
+
+    /**
+     * Get the product that owns the media.
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the variant that owns the media (nullable).
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+}
+
+
+
+===========================================
+FILE: ProductVariant.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class ProductVariant extends Model
+{
+    /** @use HasFactory<\Database\Factories\ProductVariantFactory> */
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'product_id',
+        'sku',
+        'price',
+        'currency',
+        'compare_at_price',
+        'stock_quantity',
+        'stock_status',
+        'is_default',
+        'variant_signature',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'compare_at_price' => 'decimal:2',
+            'is_default' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the product that owns the variant.
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the media for the variant.
+     */
+    public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class);
+    }
+
+    /**
+     * Get the variant options.
+     */
+    public function options(): BelongsToMany
+    {
+        return $this->belongsToMany(Attribute::class, 'variant_options')
+            ->using(VariantOption::class)
+            ->withPivot('attribute_value_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the order items for the variant.
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+}
+
+
+
+===========================================
+FILE: SellerProfile.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class SellerProfile extends Model
+{
+    /** @use HasFactory<\Database\Factories\SellerProfileFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'tax_number',
+        'company_name',
+        'address',
+        'phone',
+        'email',
+    ];
+
+    /**
+     * Get the user that owns the seller profile.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+
+
+
+===========================================
+FILE: Store.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Store extends Model
+{
+    /** @use HasFactory<\Database\Factories\StoreFactory> */
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'owner_user_id',
+        'name',
+        'slug',
+        'address_json',
+        'status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'address_json' => 'array',
+        ];
+    }
+
+    /**
+     * Get the user that owns the store.
+     */
+    public function owner()
+{
+    return $this->belongsTo(User::class, 'owner_user_id');
+}
+
+public function products()
+{
+    return $this->hasMany(Product::class);
+}
+
+public function orderStores()
+{
+    return $this->hasMany(OrderStore::class);
+}
+
+public function orderItems()
+{
+    return $this->hasMany(OrderItem::class);
+}
+
+}
+
+
+
+===========================================
+FILE: User.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    /**s
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'type',
+        'status',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'two_factor_confirmed_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Get the stores owned by the user.
+     */
+    public function stores()
+    {
+        return $this->hasMany(Store::class, 'owner_user_id');
+    }
+
+    /**
+     * Get the orders placed by the user.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Get the seller profile for the user.
+     */
+    public function sellerProfile()
+    {
+        return $this->hasOne(SellerProfile::class);
+    }
+
+    /**
+     * Get the customer profile for the user.
+     */
+    public function customerProfile()
+    {
+        return $this->hasOne(CustomerProfile::class);
+    }
+
+    /**
+     * Get the carts for the user.
+     */
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+}
+
+
+
+===========================================
+FILE: VariantOption.php
+===========================================
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Pivot;
+
+class VariantOption extends Pivot
+{
+    /** @use HasFactory<\Database\Factories\VariantOptionFactory> */
+    use HasFactory;
+
+    protected $table = 'variant_options';
+
+    public $incrementing = false;
+
+    protected $primaryKey = ['variant_id', 'attribute_id'];
+
+    protected $fillable = [
+        'variant_id',
+        'attribute_id',
+        'attribute_value_id',
+    ];
+
+    /**
+     * Get the variant.
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    /**
+     * Get the attribute.
+     */
+    public function attribute(): BelongsTo
+    {
+        return $this->belongsTo(Attribute::class);
+    }
+
+    /**
+     * Get the attribute value.
+     */
+
+    public function value()
+{
+    return $this->belongsTo(AttributeValue::class, 'attribute_value_id');
+}
+}
+
+

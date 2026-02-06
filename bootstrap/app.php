@@ -16,10 +16,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Admin SPA API (session auth) - CSRF exempt so same-origin JSON requests work
+        $middleware->validateCsrfTokens(except: ['api/*']);
+
         $middleware->web(append: [
             HandleAppearance::class,
+            \App\Http\Middleware\SetLocaleFromSession::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        $middleware->alias([
+            'user.type' => \App\Http\Middleware\EnsureUserType::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
