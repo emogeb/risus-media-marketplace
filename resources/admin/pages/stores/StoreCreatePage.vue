@@ -33,6 +33,9 @@ const form = reactive<StoreCreateInput>({
   address: '',
   logo_url: '',
   status: 'active',
+  bank_iban: '',
+  bank_swiss_code: '',
+  bank_qr_code: undefined,
   owner: {
     name: '',
     email: '',

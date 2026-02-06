@@ -15,7 +15,16 @@
         <span>/</span>
         <span class="text-gray-900 font-medium">{{ store?.name || storeId }}</span>
       </div>
-      <PageHeader :title="store?.name || 'Mağaza Detayı'" description="Mağaza bilgileri ve ürün yönetimi" />
+      <PageHeader :title="store?.name || 'Mağaza Detayı'" description="Mağaza bilgileri ve ürün yönetimi">
+        <template #actions>
+          <UiButton variant="secondary" @click="router.push({ name: 'store-edit', params: { id: storeId } })">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Düzenle / IBAN Güncelle
+          </UiButton>
+        </template>
+      </PageHeader>
     </div>
 
     <!-- Quick Stats / Header Info -->
@@ -94,6 +103,37 @@
                 <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
                   {{ store?.address || 'Adres bilgisi girilmemiş.' }}
                 </p>
+              </div>
+            </div>
+          </div>
+        </UiCard>
+
+        <UiCard title="Banka Bilgileri">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">IBAN ve Kodlar</h4>
+                <div class="space-y-3">
+                  <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span class="text-xs text-gray-500 block mb-1">IBAN</span>
+                    <span class="text-sm font-mono font-bold text-gray-900">{{ store?.bank_iban || 'Girilmemiş' }}</span>
+                  </div>
+                  <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span class="text-xs text-gray-500 block mb-1">Swiss Code / BIC</span>
+                    <span class="text-sm font-mono font-bold text-gray-900">{{ store?.bank_swiss_code || 'Girilmemiş' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">IBAN QR Kod</h4>
+                <div v-if="(store as any)?.bank_qr_url" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 inline-block">
+                    <img :src="(store as any).bank_qr_url" class="h-32 w-32 object-contain" alt="QR Kod" />
+                </div>
+                <div v-else class="bg-gray-50 h-32 w-32 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-center p-4">
+                    <span class="text-xs text-gray-400">QR Kod Yüklenmemiş</span>
+                </div>
               </div>
             </div>
           </div>

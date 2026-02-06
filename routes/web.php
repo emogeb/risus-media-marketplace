@@ -84,9 +84,7 @@ Route::get('/become-seller', fn () => Inertia::render('seller/BecomeSeller'))->n
 Route::get('/seller/commissions', fn () => Inertia::render('seller/Commissions'))->name('seller.commissions');
 
 // Checkout Route
-Route::get('/checkout', function () {
-    return Inertia::render('Checkout/Index');
-})->name('checkout');
+Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
 
 // Admin panel (Vue SPA) - sadece admin rolü; product route'tan önce tanımlanmalı
 Route::middleware(['auth', 'user.type:admin'])->group(function () {

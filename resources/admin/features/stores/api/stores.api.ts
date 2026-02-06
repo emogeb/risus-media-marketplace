@@ -51,6 +51,10 @@ function buildFormData(input: StoreCreateInput | StoreUpdateInput): FormData {
       if (value instanceof File) {
         fd.append('hero_video', value)
       }
+    } else if (key === 'bank_qr_code') {
+      if (value instanceof File) {
+        fd.append('bank_qr_code', value)
+      }
     } else if (key === 'is_featured_on_hero') {
       fd.append('is_featured_on_hero', value ? '1' : '0')
     } else {
@@ -61,7 +65,7 @@ function buildFormData(input: StoreCreateInput | StoreUpdateInput): FormData {
 }
 
 export async function createStore(input: StoreCreateInput): Promise<{ data: Store }> {
-  if (input.hero_video instanceof File) {
+  if (input.hero_video instanceof File || input.bank_qr_code instanceof File) {
     const payload = buildFormData(input)
     const { data } = await http.post<{ data: Store }>('/stores', payload, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -73,7 +77,7 @@ export async function createStore(input: StoreCreateInput): Promise<{ data: Stor
 }
 
 export async function updateStore(id: string, input: StoreUpdateInput): Promise<{ data: Store }> {
-  if (input.hero_video instanceof File) {
+  if (input.hero_video instanceof File || input.bank_qr_code instanceof File) {
     const payload = buildFormData(input)
     payload.append('_method', 'PUT')
     const { data } = await http.post<{ data: Store }>(`/stores/${id}`, payload, {

@@ -252,6 +252,53 @@
         <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
       </div>
 
+      <!-- Bank Details -->
+      <div class="border rounded-lg p-4 bg-gray-50 space-y-4">
+        <h3 class="font-medium text-gray-900 border-b pb-2">Banka Bilgileri (Ödeme İçin)</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- IBAN -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+                <input
+                  v-model="form.bank_iban"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="TR00 0000 0000..."
+                />
+            </div>
+
+            <!-- Swiss Code -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Swiss Code / BIC</label>
+                <input
+                  v-model="form.bank_swiss_code"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ABC D TR IS..."
+                />
+            </div>
+        </div>
+
+        <!-- Bank QR Code -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">IBAN QR Kod (Görsel)</label>
+            <div class="mt-1 flex items-center gap-4">
+                <div v-if="(initialData as any)?.bank_qr_url || selectedQrName" class="h-16 w-16 border rounded bg-white flex items-center justify-center overflow-hidden">
+                    <img v-if="selectedQrUrl || (initialData as any)?.bank_qr_url" :src="selectedQrUrl || (initialData as any)?.bank_qr_url" class="max-h-full max-w-full object-contain" />
+                </div>
+                <div class="flex-1">
+                    <label class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 inline-block">
+                        <span>{{ selectedQrName ? 'Değiştir' : 'QR Kod Yükle' }}</span>
+                        <input type="file" class="sr-only" accept="image/*" @change="handleQrChange" />
+                    </label>
+                    <p v-if="selectedQrName" class="mt-1 text-xs text-gray-500">{{ selectedQrName }}</p>
+                    <p class="mt-1 text-xs text-gray-400">JPG, PNG, GIF (max 2MB)</p>
+                </div>
+            </div>
+        </div>
+      </div>
+
       <!-- Validation Errors Alert -->
       <UiAlert
         v-if="hasValidationErrors"
@@ -309,6 +356,8 @@ const form = reactive<StoreCreateInput>({
   address: props.initialData?.address || '',
   logo_url: props.initialData?.logo_url || '',
   status: props.initialData?.status || 'active',
+  bank_iban: (props.initialData as any)?.bank_iban || '',
+  bank_swiss_code: (props.initialData as any)?.bank_swiss_code || '',
   owner: (props.initialData as StoreCreateInput)?.owner || {
     name: '',
     email: '',
@@ -347,6 +396,19 @@ function handleFileChange(event: Event) {
     const file = target.files[0]
     selectedFileName.value = file.name
     form.hero_video = file
+  }
+}
+
+const selectedQrName = ref('')
+const selectedQrUrl = ref('')
+
+function handleQrChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    selectedQrName.value = file.name
+    form.bank_qr_code = file
+    selectedQrUrl.value = URL.createObjectURL(file)
   }
 }
 </script>

@@ -96,6 +96,8 @@ const formData = computed<StoreUpdateInput | undefined>(() => {
     address: selectedStore.value.address || '',
     logo_url: selectedStore.value.logo_url || '',
     status: selectedStore.value.status,
+    bank_iban: (selectedStore.value as any).bank_iban || '',
+    bank_swiss_code: (selectedStore.value as any).bank_swiss_code || '',
   }
 })
 

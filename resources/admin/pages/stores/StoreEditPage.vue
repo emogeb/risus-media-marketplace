@@ -96,6 +96,8 @@ watch(
         address: newStore.address || '',
         logo_url: newStore.logo_url || '',
         status: newStore.status || 'active',
+        bank_iban: newStore.bank_iban || '',
+        bank_swiss_code: newStore.bank_swiss_code || '',
       })
     }
   },

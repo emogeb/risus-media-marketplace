@@ -84,6 +84,9 @@ class AdminStoreController extends Controller
             'owner.company_name' => 'required|string|max:255',
             'hero_video' => 'nullable|file|mimes:mp4,mov,ogg,qt|max:51200', // 50MB max
             'is_featured_on_hero' => 'sometimes|boolean',
+            'bank_iban' => 'nullable|string|max:255',
+            'bank_swiss_code' => 'nullable|string|max:255',
+            'bank_qr_code' => 'nullable|image|max:2048',
         ]);
 
         $store = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
@@ -137,7 +140,15 @@ class AdminStoreController extends Controller
                 'address_json' => $addressJson,
                 'status' => $validated['status'] ?? 'active',
                 'is_featured_on_hero' => $validated['is_featured_on_hero'] ?? false,
+                'bank_iban' => $validated['bank_iban'] ?? null,
+                'bank_swiss_code' => $validated['bank_swiss_code'] ?? null,
             ]);
+
+            if ($request->hasFile('bank_qr_code')) {
+                $path = $request->file('bank_qr_code')->store('store-qrs', 'public');
+                $store->bank_qr_path = $path;
+                $store->save();
+            }
 
             if ($request->hasFile('hero_video')) {
                 $path = $request->file('hero_video')->store('hero-videos', 'public');
@@ -174,6 +185,9 @@ class AdminStoreController extends Controller
             'status' => 'sometimes|in:active,inactive',
             'hero_video' => 'nullable|file|mimes:mp4,mov,ogg,qt|max:51200',
             'is_featured_on_hero' => 'sometimes|boolean',
+            'bank_iban' => 'nullable|string|max:255',
+            'bank_swiss_code' => 'nullable|string|max:255',
+            'bank_qr_code' => 'nullable|image|max:2048',
         ]);
 
         if (array_key_exists('name', $validated) && ! array_key_exists('slug', $validated) && empty($store->getRawOriginal('slug'))) {
@@ -210,7 +224,7 @@ class AdminStoreController extends Controller
             ]);
         }
 
-        $store->fill(array_intersect_key($validated, array_flip(['name', 'slug', 'status', 'is_featured_on_hero'])));
+        $store->fill(array_intersect_key($validated, array_flip(['name', 'slug', 'status', 'is_featured_on_hero', 'bank_iban', 'bank_swiss_code'])));
         $store->address_json = $addressJson ?: null;
 
         if ($request->hasFile('hero_video')) {
@@ -221,6 +235,14 @@ class AdminStoreController extends Controller
 
             $path = $request->file('hero_video')->store('hero-videos', 'public');
             $store->hero_video = $path;
+        }
+
+        if ($request->hasFile('bank_qr_code')) {
+            if ($store->bank_qr_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($store->bank_qr_path)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($store->bank_qr_path);
+            }
+            $path = $request->file('bank_qr_code')->store('store-qrs', 'public');
+            $store->bank_qr_path = $path;
         }
 
         $store->save();
@@ -285,6 +307,10 @@ class AdminStoreController extends Controller
             'hero_video_url' => $store->hero_video ? asset('storage/'.$store->hero_video) : null,
             'is_featured_on_hero' => $store->is_featured_on_hero,
             'hero_order' => $store->hero_order,
+            'bank_iban' => $store->bank_iban,
+            'bank_swiss_code' => $store->bank_swiss_code,
+            'bank_qr_path' => $store->bank_qr_path,
+            'bank_qr_url' => $store->bank_qr_path ? asset('storage/'.$store->bank_qr_path) : null,
         ];
     }
 }

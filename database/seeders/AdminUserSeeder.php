@@ -14,10 +14,10 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'emogeb11@gmail.com'],
+            ['email' => 'admin@worldweddingfairs.com'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make('Risus3535'),
                 'type' => User::TYPE_ADMIN,
                 'status' => 'active',
             ]

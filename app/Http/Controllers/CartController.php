@@ -128,6 +128,15 @@ class CartController extends Controller
         // Get product and store_id
         $product = Product::findOrFail($request->product_id);
 
+        // Multi-vendor sepet sistemini şuanda kullanmicaz o yüzden en basitinden 1 mağazadan sepete bir ürün eklediğinde 
+        // kullanıcı diğer mağazadan ürün ekleyemesin if ile kontrol edelim controllerda tüm kullanıcılar için bu geçerli olsun
+        if ($cart && $cart->items()->count() > 0) {
+            $existingStoreId = $cart->items()->first()->store_id;
+            if ($existingStoreId != $product->store_id) {
+                return redirect()->back()->with('error', 'Sepetinizde farklı bir mağazadan ürün bulunmaktadır. Lütfen önce sepetinizi boşaltın.');
+            }
+        }
+
         // Add item to cart
         $cart->addOrUpdateItem(
             $request->product_id,

@@ -20,6 +20,9 @@ class Store extends Model
         'hero_video',
         'is_featured_on_hero',
         'hero_order',
+        'bank_iban',
+        'bank_qr_path',
+        'bank_swiss_code',
     ];
 
     protected function casts(): array
