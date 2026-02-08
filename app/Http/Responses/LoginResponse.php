@@ -3,6 +3,7 @@
 namespace App\Http\Responses;
 
 use Illuminate\Contracts\Support\Responsable;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoginResponse implements Responsable
@@ -12,13 +13,13 @@ class LoginResponse implements Responsable
         $user = $request->user();
 
         if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
-            return redirect()->route('admin');
+            return Inertia::location('/admin/');
         }
 
         if ($user && method_exists($user, 'isVendor') && $user->isVendor()) {
-            return redirect()->route('vendor');
+            return Inertia::location(route('vendor'));
         }
 
-        return redirect()->route('dashboard');
+        return Inertia::location(route('dashboard'));
     }
 }
