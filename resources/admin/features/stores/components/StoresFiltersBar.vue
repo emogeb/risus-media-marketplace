@@ -1,22 +1,22 @@
 <template>
   <UiCard>
-    <div class="flex flex-wrap items-center gap-4">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
       <!-- Search Input -->
-      <div class="flex-1 min-w-[200px]">
+      <div class="flex-1">
         <input
           v-model="localFilters.search"
           type="text"
           placeholder="Mağaza adı, email veya telefon ile ara..."
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           @input="handleSearchInput"
         />
       </div>
 
       <!-- Status Filter -->
-      <div class="min-w-[150px]">
+      <div class="w-full sm:w-48">
         <select
           v-model="localFilters.status"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           @change="handleStatusChange"
         >
           <option value="">Tüm Durumlar</option>
@@ -26,7 +26,7 @@
       </div>
 
       <!-- Clear Filters Button -->
-      <UiButton v-if="hasActiveFilters" variant="ghost" size="sm" @click="handleClearFilters">
+      <UiButton v-if="hasActiveFilters" variant="ghost" size="sm" class="h-10 sm:h-9" @click="handleClearFilters">
         Filtreleri Temizle
       </UiButton>
     </div>
@@ -51,7 +51,7 @@ const emit = defineEmits<{
 
 const localFilters = reactive<StoresQueryParams>({
   search: props.filters.search || '',
-  status: props.filters.status || '',
+  status: props.filters.status,
 })
 
 const hasActiveFilters = computed(() => {
@@ -73,7 +73,7 @@ function handleStatusChange() {
 
 function handleClearFilters() {
   localFilters.search = ''
-  localFilters.status = ''
+  localFilters.status = undefined
   emit('clear-filters')
 }
 
@@ -82,7 +82,7 @@ watch(
   () => props.filters,
   (newFilters) => {
     localFilters.search = newFilters.search || ''
-    localFilters.status = newFilters.status || ''
+    localFilters.status = newFilters.status
   },
   { deep: true }
 )

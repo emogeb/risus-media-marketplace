@@ -1,12 +1,12 @@
 <template>
   <UiCard padding="sm">
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="flex-1 min-w-[200px]">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+      <div class="flex-1">
         <input
           v-model="localFilters.q"
           type="text"
           placeholder="Satıcı ara..."
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full h-10 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           @input="handleSearchInput"
         />
       </div>
@@ -15,16 +15,18 @@
         <select
           id="status-filter"
           v-model="localFilters.status"
-          class="h-9 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full sm:w-auto h-10 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Tümü</option>
+          <option :value="undefined">Tümü</option>
           <option value="active">Aktif</option>
           <option value="inactive">Pasif</option>
           <option value="pending">Beklemede</option>
         </select>
       </div>
-      <UiButton size="sm" @click="applyFilters">Filtrele</UiButton>
-      <UiButton size="sm" variant="ghost" @click="clearFilters">Temizle</UiButton>
+      <div class="flex gap-2">
+        <UiButton size="sm" class="flex-1 sm:flex-none h-10 sm:h-9" @click="applyFilters">Filtrele</UiButton>
+        <UiButton size="sm" variant="ghost" class="flex-1 sm:flex-none h-10 sm:h-9" @click="clearFilters">Temizle</UiButton>
+      </div>
     </div>
   </UiCard>
 </template>

@@ -12,9 +12,9 @@
         <!-- Drawer -->
         <div
           :class="[
-            'fixed top-0 bottom-0 bg-white shadow-2xl transition-transform duration-300 ease-out',
+            'fixed top-0 bottom-0 bg-white shadow-2xl transition-transform duration-300 ease-out z-[60]',
             position === 'right' ? 'right-0' : 'left-0',
-            width === 'sm' ? 'w-80' : width === 'md' ? 'w-96' : 'w-[28rem]',
+            width === 'sm' ? 'w-full sm:w-80' : width === 'md' ? 'w-full sm:w-96' : 'w-full sm:w-[28rem]',
           ]"
           @click.stop
         >

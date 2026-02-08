@@ -20,7 +20,7 @@
           <label class="text-xs font-medium text-black ml-1">Sipariş Durumu</label>
           <select
             v-model="localFilters.status"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option :value="undefined">Tüm Durumlar</option>
             <option value="pending">Beklemede</option>
@@ -37,7 +37,7 @@
           <label class="text-xs font-medium text-black ml-1">Ödeme Durumu</label>
           <select
             v-model="localFilters.payment_status"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option :value="undefined">Tüm Ödeme Durumları</option>
             <option value="pending">Beklemede</option>
@@ -51,7 +51,7 @@
           <label class="text-xs font-medium text-black ml-1">Sevkiyat Tipi</label>
           <select
             v-model="localFilters.fulfillment_type"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option :value="undefined">Tüm Sevkiyat Tipleri</option>
             <option value="shipping">Kargo</option>
@@ -64,7 +64,7 @@
           <label class="text-xs font-medium text-black ml-1">Süreç (Gelinlik)</label>
           <select
             v-model="localFilters.bridal_status"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option :value="undefined">Tüm Süreçler</option>
             <option value="new">Yeni</option>
@@ -82,8 +82,11 @@
         </div>
       </div>
 
-      <div class="flex justify-end pt-2 border-t border-gray-100">
-        <UiButton variant="primary" size="sm" @click="applyFilters" class="px-8">
+      <div class="flex flex-col sm:flex-row justify-end gap-3 pt-2 border-t border-gray-100">
+        <UiButton variant="ghost" size="sm" class="sm:hidden" @click="clearFilters">
+          Filtreleri Temizle
+        </UiButton>
+        <UiButton variant="primary" size="sm" @click="applyFilters" class="px-8 w-full sm:w-auto h-10 sm:h-9">
           Filtreli Sonuçları Göster
         </UiButton>
       </div>

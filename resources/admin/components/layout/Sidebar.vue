@@ -2,13 +2,15 @@
   <aside
     :class="[
       'fixed left-0 top-0 h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-40 shadow-xl',
-      isOpen ? 'w-64' : 'w-16',
+      isMobile 
+        ? (isOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full') 
+        : (isOpen ? 'w-64' : 'w-16'),
     ]"
   >
     <div class="flex h-full flex-col">
       <!-- Premium Brand Header -->
       <div class="flex h-20 items-center px-4 border-b border-slate-700/50">
-        <div v-if="isOpen" class="flex items-center gap-3 w-full">
+        <div v-if="isOpen || isMobile" class="flex items-center gap-3 w-full">
           <div class="h-10 w-10 rounded-full bg-gradient-to-br from-rose-400 via-pink-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
             GD
           </div>
@@ -37,6 +39,7 @@
                 ? 'bg-white/10 text-white shadow-sm border-l-2 border-rose-400'
                 : 'text-slate-300 hover:bg-white/5 hover:text-white',
             ]"
+            @click="handleMenuClick"
           >
             <span
               :class="[
@@ -46,7 +49,7 @@
             >
               {{ item.icon }}
             </span>
-            <span v-if="isOpen" class="flex-1 truncate">{{ item.label }}</span>
+            <span v-if="isOpen || isMobile" class="flex-1 truncate">{{ item.label }}</span>
           </router-link>
           <!-- Menu item with submenu -->
           <div v-else class="mb-1.5">
@@ -68,10 +71,10 @@
               >
                 {{ item.icon }}
               </span>
-              <span v-if="isOpen" class="flex-1 truncate">{{ item.label }}</span>
+              <span v-if="isOpen || isMobile" class="flex-1 truncate">{{ item.label }}</span>
             </div>
             <!-- Submenu items -->
-            <div v-if="isOpen" class="ml-8 mt-1 space-y-1">
+            <div v-if="isOpen || isMobile" class="ml-8 mt-1 space-y-1">
               <router-link
                 v-for="child in item.children"
                 :key="child.path || child.name"
@@ -82,6 +85,7 @@
                     ? 'bg-white/10 text-white'
                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-300',
                 ]"
+                @click="handleMenuClick"
               >
                 <span class="w-1 h-1 rounded-full bg-current opacity-50"></span>
                 <span>{{ child.label }}</span>
@@ -92,7 +96,7 @@
       </nav>
 
       <!-- Footer -->
-      <div v-if="isOpen" class="px-4 py-3 border-t border-slate-700/50">
+      <div v-if="isOpen || isMobile" class="px-4 py-3 border-t border-slate-700/50">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span>v1.0</span>
           <div class="flex items-center gap-1.5">
@@ -111,11 +115,12 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@admin/stores/auth'
 import type { Permission } from '@admin/lib/auth/types'
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean
+  isMobile?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
 }>()
 
@@ -233,5 +238,12 @@ function isChildActive(child: MenuItemChild): boolean {
 function isAnyChildActive(children?: MenuItemChild[]): boolean {
   if (!children) return false
   return children.some((child) => isChildActive(child))
+}
+
+// Handle menu item click - close sidebar if on mobile
+function handleMenuClick() {
+  if (props.isMobile) {
+    emit('close')
+  }
 }
 </script>

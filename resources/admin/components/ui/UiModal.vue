@@ -11,7 +11,7 @@
         <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
 
         <!-- Modal Container -->
-        <div class="flex min-h-screen items-center justify-center p-4 ">
+        <div class="flex min-h-screen items-center justify-center p-4 z-[60]">
           <div
             class="relative w-full max-w-lg transform overflow-hidden rounded-xl bg-white shadow-2xl transition-all"
             @click.stop

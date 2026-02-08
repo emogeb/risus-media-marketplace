@@ -11,9 +11,9 @@
       <DashboardToolbar />
       
       <!-- Master Grid: Tek 12 kolonlu grid -->
-      <div class="grid grid-cols-12 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
         <!-- Sol Kolon: 8 kolon -->
-        <div class="col-span-12 lg:col-span-8 space-y-6">
+        <div class="col-span-1 md:col-span-12 lg:col-span-8 space-y-6">
           <!-- KPI Grid -->
           <KpiGrid
             :kpis="kpis"
@@ -44,13 +44,13 @@
         </div>
         
         <!-- Sağ Kolon: 4 kolon -->
-        <div class="col-span-12 lg:col-span-4 flex flex-col gap-6 self-start">
+        <div class="col-span-1 md:col-span-12 lg:col-span-4 flex flex-col gap-6 self-start">
           <!-- Quick Actions -->
           <DashboardShortcutsCard />
           
           <!-- Durum Özeti -->
           <DashboardGlanceCard
-            :values="statusSummary"
+            :values="(statusSummary as any)"
             :is-loading="isLoading"
             :error="!!error"
             :is-empty="statusSummaryIsEmpty"

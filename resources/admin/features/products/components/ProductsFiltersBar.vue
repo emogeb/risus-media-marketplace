@@ -15,23 +15,23 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         <!-- Search Input -->
-        <div class="space-y-1.5 lg:col-span-1">
+        <div class="space-y-1.5 w-full">
           <label class="text-xs font-medium text-black ml-1">Arama</label>
           <input
             v-model="localFilters.q"
             type="text"
             placeholder="Ürün adı, SKU..."
-            class="w-full h-9 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 sm:h-9 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:ring-2 focus:ring-blue-500 outline-none"
             @input="handleSearchInput"
           />
         </div>
 
         <!-- Store Filter -->
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 w-full">
           <label class="text-xs font-medium text-black ml-1">Mağaza</label>
           <select
             v-model="localFilters.storeId"
-            class="w-full h-9 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 sm:h-9 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tüm Mağazalar</option>
             <option v-for="store in stores" :key="store.id" :value="store.id">
@@ -41,11 +41,11 @@
         </div>
 
         <!-- Status Filter -->
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 w-full">
           <label class="text-xs font-medium text-black ml-1">Durum</label>
           <select
             v-model="localFilters.status"
-            class="w-full h-9 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full h-10 sm:h-9 px-3 py-0 text-sm border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tüm Durumlar</option>
             <option value="draft">Taslak</option>
@@ -55,16 +55,16 @@
         </div>
 
         <!-- Toggle Controls -->
-        <div class="flex items-center gap-4 h-9 pb-2">
+        <div class="flex items-center justify-between gap-4 h-10 sm:h-9 pt-2 sm:pt-0">
           <label class="flex items-center gap-2 cursor-pointer group">
             <input
               v-model="localFilters.lowStock"
               type="checkbox"
-              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5 sm:w-4 sm:h-4"
             />
             <span class="text-sm text-black group-hover:text-gray-900">Düşük Stok</span>
           </label>
-          <UiButton size="sm" variant="primary" @click="applyFilters" class="ml-auto">
+          <UiButton size="sm" variant="primary" @click="applyFilters" class="px-6 sm:px-4">
             Uygula
           </UiButton>
         </div>
